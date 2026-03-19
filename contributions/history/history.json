@@ -1,0 +1,229 @@
+[
+  {
+    "id": "skin-edit-1773946179668",
+    "type": "skin-edit",
+    "action": "approved",
+    "submittedAt": "2026-03-19T18:49:39.668Z",
+    "reviewedAt": "2026-03-19T18:49:49.339Z",
+    "data": {
+      "heroId": 33,
+      "heroName": "Cyclops",
+      "skinName": "Cyclops Spongebob Squarepants",
+      "currentTier": "",
+      "currentSeries": "Spongebob Squarepants",
+      "newTier": "Collab",
+      "newSeries": "Spongebob Squarepants",
+      "reason": ""
+    }
+  },
+  {
+    "id": "series-1773945915044",
+    "type": "series",
+    "action": "approved",
+    "submittedAt": "2026-03-19T18:45:15.044Z",
+    "reviewedAt": "2026-03-19T18:45:26.832Z",
+    "data": {
+      "seriesName": "Spongebob Squarepants",
+      "skins": [
+        {
+          "heroId": 33,
+          "skinName": "Cyclops Spongebob Squarepants"
+        }
+      ]
+    }
+  },
+  {
+    "id": "skin-1773945556491",
+    "type": "skin",
+    "action": "approved",
+    "submittedAt": "2026-03-19T18:39:16.491Z",
+    "reviewedAt": "2026-03-19T18:41:21.857Z",
+    "data": {
+      "heroId": 33,
+      "heroName": "Cyclops",
+      "skin": {
+        "skinName": "Cyclops Spongebob Squarepants",
+        "skinSeries": "",
+        "skinTier": "Collab",
+        "skinCover": "https://scontent.fbdo9-1.fna.fbcdn.net/v/t39.30808-6/571165301_1276299667843137_7921620844837970333_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=7b2446&_nc_eui2=AeEHEfWKI_fNEue_KQVBijleR3Ok-IDBibxHc6T4gMGJvEkkI2tQcTdYYATgQgInL8h-9422NcmVeqloxVhLCbal&_nc_ohc=PLcGvNrKFogQ7kNvwEDAZYY&_nc_oc=AdpvQkxlv7gE2hMspwsroKi8KkBDvJjYkBIipb9YM-v4v-dbv8oUP6ZMbmWapeAoHJVDJi1Z2lq05-uZDFzEQvm7&_nc_zt=23&_nc_ht=scontent.fbdo9-1.fna&_nc_gid=YIo2c7zmWfKqfLRYEwbnjA&_nc_ss=8&oh=00_AfwIlvZQexq_3Pf-gJEaUyPH-X5GO5PI4i6Gz0lsPKPFBg&oe=69C22058",
+        "skinImage": "https://scontent.fbdo9-1.fna.fbcdn.net/v/t39.30808-6/571165301_1276299667843137_7921620844837970333_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=7b2446&_nc_eui2=AeEHEfWKI_fNEue_KQVBijleR3Ok-IDBibxHc6T4gMGJvEkkI2tQcTdYYATgQgInL8h-9422NcmVeqloxVhLCbal&_nc_ohc=PLcGvNrKFogQ7kNvwEDAZYY&_nc_oc=AdpvQkxlv7gE2hMspwsroKi8KkBDvJjYkBIipb9YM-v4v-dbv8oUP6ZMbmWapeAoHJVDJi1Z2lq05-uZDFzEQvm7&_nc_zt=23&_nc_ht=scontent.fbdo9-1.fna&_nc_gid=YIo2c7zmWfKqfLRYEwbnjA&_nc_ss=8&oh=00_AfwIlvZQexq_3Pf-gJEaUyPH-X5GO5PI4i6Gz0lsPKPFBg&oe=69C22058"
+      }
+    }
+  },
+  {
+    "id": "counter-1772618191904",
+    "type": "counter",
+    "action": "approved",
+    "submittedAt": "2026-03-04T09:56:31.904Z",
+    "reviewedAt": "2026-03-05T07:00:34.552Z",
+    "data": {
+      "heroName": "Ao'yin",
+      "heroIcon": "https://hokapi.project-n.site/images/heroes/icons/519.webp",
+      "action": "add",
+      "relationshipType": "weakAgainst",
+      "targetHeroName": "Consort Yu",
+      "targetHeroIcon": "https://hokapi.project-n.site/images/heroes/icons/174.webp",
+      "description": "",
+      "applyInverse": true
+    }
+  },
+  {
+    "id": "counter-1772618191844",
+    "type": "counter",
+    "action": "approved",
+    "submittedAt": "2026-03-04T09:56:31.844Z",
+    "reviewedAt": "2026-03-05T07:00:28.443Z",
+    "data": {
+      "heroName": "Ao'yin",
+      "heroIcon": "https://hokapi.project-n.site/images/heroes/icons/519.webp",
+      "action": "add",
+      "relationshipType": "weakAgainst",
+      "targetHeroName": "Arli",
+      "targetHeroIcon": "https://hokapi.project-n.site/images/heroes/icons/199.webp",
+      "description": "",
+      "applyInverse": true
+    }
+  },
+  {
+    "id": "skin-1771604157105",
+    "type": "skin",
+    "action": "rejected",
+    "submittedAt": "2026-02-20T16:15:57.105Z",
+    "reviewedAt": "2026-03-04T07:39:43.253Z",
+    "data": {
+      "heroId": 132,
+      "heroName": "MARCO POLO",
+      "skin": {
+        "skinName": "Test Contribution",
+        "skinSeries": "TEST SERIES",
+        "skinCover": "https://example.com/test.jpg"
+      }
+    }
+  },
+  {
+    "id": "counter-1771706317811",
+    "type": "counter",
+    "action": "rejected",
+    "submittedAt": "2026-02-21T20:38:37.811Z",
+    "reviewedAt": "2026-02-21T21:11:58.566Z",
+    "data": {
+      "heroName": "CHICHA",
+      "action": "remove",
+      "relationshipType": "weakAgainst",
+      "targetHeroName": "DUN",
+      "targetHeroIcon": "https://world.honorofkings.com/zlkdatasys/images/image/20231113/16998611165120.jpeg",
+      "description": ""
+    }
+  },
+  {
+    "id": "counter-1771706317817",
+    "type": "counter",
+    "action": "approved",
+    "submittedAt": "2026-02-21T20:38:37.817Z",
+    "reviewedAt": "2026-02-21T21:02:55.714Z",
+    "data": {
+      "heroName": "CHICHA",
+      "action": "remove",
+      "relationshipType": "weakAgainst",
+      "targetHeroName": "NEZHA",
+      "targetHeroIcon": "https://world.honorofkings.com/zlkdatasys/images/image/20240529/17169519948178.jpeg",
+      "description": ""
+    }
+  },
+  {
+    "id": "counter-1771707753343",
+    "type": "counter",
+    "action": "approved",
+    "submittedAt": "2026-02-21T21:02:33.343Z",
+    "reviewedAt": "2026-02-21T21:02:50.372Z",
+    "data": {
+      "heroName": "LAPULAPU",
+      "action": "add",
+      "relationshipType": "weakAgainst",
+      "targetHeroName": "AO'YIN",
+      "targetHeroIcon": "https://world.honorofkings.com/zlkdatasys/images/image/20240702/17199033998089.jpg",
+      "description": ""
+    }
+  },
+  {
+    "id": "counter-1771707371989",
+    "type": "counter",
+    "action": "approved",
+    "submittedAt": "2026-02-21T20:56:11.990Z",
+    "reviewedAt": "2026-02-21T20:56:32.128Z",
+    "data": {
+      "heroName": "FLOWBORN",
+      "action": "add",
+      "relationshipType": "weakAgainst",
+      "targetHeroName": "JING",
+      "targetHeroIcon": "https://world.honorofkings.com/zlkdatasys/images/image/20221206/16703179459568.jpg",
+      "description": ""
+    }
+  },
+  {
+    "id": "counter-1771706243000",
+    "type": "counter",
+    "action": "approved",
+    "submittedAt": "2026-02-21T20:37:23.000Z",
+    "reviewedAt": "2026-02-21T20:37:52.437Z",
+    "data": {
+      "heroName": "CHICHA",
+      "action": "add",
+      "relationshipType": "weakAgainst",
+      "targetHeroName": "NEZHA",
+      "targetHeroIcon": "https://world.honorofkings.com/zlkdatasys/images/image/20240529/17169519948178.jpeg",
+      "description": ""
+    }
+  },
+  {
+    "id": "counter-1771706243059",
+    "type": "counter",
+    "action": "approved",
+    "submittedAt": "2026-02-21T20:37:23.059Z",
+    "reviewedAt": "2026-02-21T20:37:47.002Z",
+    "data": {
+      "heroName": "CHICHA",
+      "action": "add",
+      "relationshipType": "weakAgainst",
+      "targetHeroName": "DUN",
+      "targetHeroIcon": "https://world.honorofkings.com/zlkdatasys/images/image/20231113/16998611165120.jpeg",
+      "description": ""
+    }
+  },
+  {
+    "id": "skin-1771612377912",
+    "type": "skin",
+    "action": "approved",
+    "submittedAt": "2026-02-20T18:32:57.912Z",
+    "reviewedAt": "2026-02-20T18:33:06.478Z",
+    "data": {
+      "heroId": 112,
+      "heroName": "LUBAN NO.7",
+      "skin": {
+        "skinName": "Conan Edogawa",
+        "skinSeries": "DETECTIVE CONAN",
+        "skinTier": "Legendary",
+        "skinCover": "https://static.wikia.nocookie.net/honor-of-kings/images/c/c1/Luban_No.7_%28Conan_Edogawa%29.jpg/revision/latest/scale-to-width-down/1000?cb=20250813075324",
+        "skinImage": "https://static.wikia.nocookie.net/honor-of-kings/images/c/c1/Luban_No.7_%28Conan_Edogawa%29.jpg/revision/latest/scale-to-width-down/1000?cb=20250813075324"
+      }
+    }
+  },
+  {
+    "id": "skin-1771612047003",
+    "type": "skin",
+    "action": "approved",
+    "submittedAt": "2026-02-20T18:27:27.003Z",
+    "reviewedAt": "2026-02-20T18:30:53.271Z",
+    "data": {
+      "heroId": 132,
+      "heroName": "MARCO POLO",
+      "skin": {
+        "skinName": "Kid the Phantom Thief",
+        "skinSeries": "DETECTIVE CONAN",
+        "skinTier": "Legendary",
+        "skinCover": "https://static.wikia.nocookie.net/honor-of-kings/images/6/62/Marco_Polo_%28Kid_the_Phantom_Thief%29.jpg/revision/latest/scale-to-width-down/1000?cb=20250813075529",
+        "skinImage": "https://static.wikia.nocookie.net/honor-of-kings/images/6/62/Marco_Polo_%28Kid_the_Phantom_Thief%29.jpg/revision/latest/scale-to-width-down/1000?cb=20250813075529"
+      }
+    }
+  }
+]

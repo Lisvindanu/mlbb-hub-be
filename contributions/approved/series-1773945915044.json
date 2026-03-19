@@ -1,0 +1,18 @@
+{
+  "type": "series",
+  "contributorId": "2",
+  "contributorName": "Lisvindanu",
+  "data": {
+    "seriesName": "Spongebob Squarepants",
+    "skins": [
+      {
+        "heroId": 33,
+        "skinName": "Cyclops Spongebob Squarepants"
+      }
+    ]
+  },
+  "submittedAt": "2026-03-19T18:45:15.044Z",
+  "status": "approved",
+  "id": "series-1773945915044",
+  "reviewedAt": "2026-03-19T18:45:26.830Z"
+}

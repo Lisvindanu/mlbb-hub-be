@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Output files
+output/*.json
+output/*.log
+*.log
+
+# Keep output directory structure but ignore large data files
+!output/.gitkeep
+
+# Puppeteer
+.local-chromium/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+*.tmp
+tmp/
+.cache/
+
+# Backup files
+*.bak
+
+# Large media files (transfer separately to VPS)
+public/images/
+
+# Runtime data — never reset by git (stored in DB or local JSON)
+community-data/
+
+# HAR files (large network recordings)
+*.har
+tugas/

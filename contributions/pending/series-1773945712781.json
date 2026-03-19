@@ -1,0 +1,17 @@
+{
+  "type": "series",
+  "contributorId": "2",
+  "contributorName": "Lisvindanu",
+  "data": {
+    "seriesName": "Spongebob Squarepants",
+    "skins": [
+      {
+        "heroId": 33,
+        "skinName": "Spongebob Squarepants"
+      }
+    ]
+  },
+  "submittedAt": "2026-03-19T18:41:52.781Z",
+  "status": "pending",
+  "id": "series-1773945712781"
+}
