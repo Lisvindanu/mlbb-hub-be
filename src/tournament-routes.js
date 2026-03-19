@@ -41,7 +41,7 @@ export async function handleTournamentRoutes(req, res) {
     const user = await getAuthedUser(req);
     if (!user) { json(res, 401, { error: 'Login diperlukan untuk membuat turnamen' }); return true; }
     try {
-      const { name, description, team_count, bracket_type } = await parseBody(req);
+      const { name, description, team_count, bracket_type, bo_format, prize, rules, scheduled_at, contact } = await parseBody(req);
       if (!name?.trim()) { json(res, 400, { error: 'Tournament name is required' }); return true; }
       if (![4, 8, 16, 32].includes(Number(team_count))) {
         json(res, 400, { error: 'team_count must be 4, 8, 16, or 32' }); return true;
@@ -51,8 +51,10 @@ export async function handleTournamentRoutes(req, res) {
         description,
         team_count: Number(team_count),
         bracket_type: bracket_type || 'single',
+        bo_format: bo_format || 'BO3',
         created_by_name: user.name || user.username || 'Anonymous',
         creator_id: user.userId,
+        prize, rules, scheduled_at, contact,
       });
       json(res, 201, tournament);
     } catch (e) {
@@ -86,9 +88,9 @@ export async function handleTournamentRoutes(req, res) {
     const user = await getAuthedUser(req);
     if (!user) { json(res, 401, { error: 'Login diperlukan untuk mendaftar tim' }); return true; }
     try {
-      const { team_name } = await parseBody(req);
+      const { team_name, logo_url, players } = await parseBody(req);
       if (!team_name?.trim()) { json(res, 400, { error: 'team_name is required' }); return true; }
-      const team = await db.joinTournament(Number(joinMatch[1]), team_name.trim(), user.userId);
+      const team = await db.joinTournament(Number(joinMatch[1]), team_name.trim(), user.userId, logo_url, players);
       json(res, 201, team);
     } catch (e) {
       json(res, 400, { error: e.message });
@@ -126,6 +128,21 @@ export async function handleTournamentRoutes(req, res) {
         score1,
         score2,
       );
+      json(res, 200, result);
+    } catch (e) {
+      json(res, 400, { error: e.message });
+    }
+    return true;
+  }
+
+  // PATCH /api/tournaments/:id/room — update room info (creator only)
+  const roomMatch = pathname.match(/^\/api\/tournaments\/(\d+)\/room$/);
+  if (roomMatch && req.method === 'PATCH') {
+    const user = await getAuthedUser(req);
+    if (!user) { json(res, 401, { error: 'Login diperlukan' }); return true; }
+    try {
+      const { room_id, room_password } = await parseBody(req);
+      const result = await db.updateTournamentRoom(Number(roomMatch[1]), user.userId, { room_id, room_password });
       json(res, 200, result);
     } catch (e) {
       json(res, 400, { error: e.message });

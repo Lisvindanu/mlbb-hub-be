@@ -58,14 +58,26 @@ export async function initTournamentTables() {
   const cols = [
     `ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS bracket_type VARCHAR(20) NOT NULL DEFAULT 'single'`,
     `ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS creator_id INTEGER`,
+    `ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS bo_format VARCHAR(10) NOT NULL DEFAULT 'BO3'`,
     `ALTER TABLE tournament_teams ADD COLUMN IF NOT EXISTS member_id INTEGER`,
     `ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS bracket VARCHAR(20) DEFAULT 'winners'`,
     `ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS loser_next_match_id INTEGER`,
     `ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS loser_next_match_slot INTEGER`,
+    `ALTER TABLE tournament_teams ADD COLUMN IF NOT EXISTS logo_url TEXT DEFAULT ''`,
   ];
   for (const q of cols) {
     try { await pool.query(q); } catch {}
   }
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tournament_team_players (
+      id SERIAL PRIMARY KEY,
+      team_id INTEGER REFERENCES tournament_teams(id) ON DELETE CASCADE,
+      player_name VARCHAR(100) NOT NULL,
+      role VARCHAR(30) DEFAULT '',
+      is_captain BOOLEAN DEFAULT FALSE
+    )
+  `);
 
   console.log('Tournament tables initialized');
 }
@@ -296,12 +308,24 @@ async function buildDoubleElimBracket(tournamentId, teams) {
 
 // ─── CRUD ─────────────────────────────────────────────────────────────────────
 
-export async function createTournament({ name, description, team_count, bracket_type = 'single', created_by_name, creator_id }) {
+export async function createTournament({ name, description, team_count, bracket_type = 'single', bo_format = 'BO3', created_by_name, creator_id, prize, rules, scheduled_at, contact }) {
   const admin_code = generateCode();
+  const validBo = ['BO1', 'BO3', 'BO5'].includes(bo_format) ? bo_format : 'BO3';
   const result = await pool.query(
-    `INSERT INTO tournaments (name, description, team_count, bracket_type, created_by_name, creator_id, admin_code)
-     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-    [name, description || '', team_count, bracket_type, created_by_name || 'Anonymous', creator_id || null, admin_code]
+    `INSERT INTO tournaments (name, description, team_count, bracket_type, bo_format, created_by_name, creator_id, admin_code, prize, rules, scheduled_at, contact)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+    [name, description || '', team_count, bracket_type, validBo, created_by_name || 'Anonymous', creator_id || null, admin_code, prize || '', rules || '', scheduled_at || null, contact || '']
+  );
+  return result.rows[0];
+}
+
+export async function updateTournamentRoom(tournament_id, userId, { room_id, room_password }) {
+  const t = await pool.query('SELECT * FROM tournaments WHERE id = $1', [tournament_id]);
+  if (!t.rows[0]) throw new Error('Tournament not found');
+  if (t.rows[0].creator_id !== Number(userId)) throw new Error('Hanya pembuat yang bisa update room');
+  const result = await pool.query(
+    'UPDATE tournaments SET room_id = $1, room_password = $2 WHERE id = $3 RETURNING *',
+    [room_id || '', room_password || '', tournament_id]
   );
   return result.rows[0];
 }
@@ -331,10 +355,25 @@ export async function getTournamentById(id) {
     'SELECT * FROM tournament_matches WHERE tournament_id = $1 ORDER BY round, match_number',
     [id]
   );
-  return { ...t.rows[0], teams: teams.rows, matches: matches.rows };
+  // Fetch all players for teams in this tournament
+  let teamsWithPlayers = teams.rows;
+  if (teams.rows.length > 0) {
+    const teamIds = teams.rows.map(t => t.id);
+    const players = await pool.query(
+      'SELECT * FROM tournament_team_players WHERE team_id = ANY($1::int[]) ORDER BY is_captain DESC, id',
+      [teamIds]
+    );
+    const byTeam = {};
+    for (const p of players.rows) {
+      if (!byTeam[p.team_id]) byTeam[p.team_id] = [];
+      byTeam[p.team_id].push(p);
+    }
+    teamsWithPlayers = teams.rows.map(t => ({ ...t, players: byTeam[t.id] || [] }));
+  }
+  return { ...t.rows[0], teams: teamsWithPlayers, matches: matches.rows };
 }
 
-export async function joinTournament(tournament_id, team_name, member_id) {
+export async function joinTournament(tournament_id, team_name, member_id, logo_url = '', players = []) {
   const t = await pool.query('SELECT * FROM tournaments WHERE id = $1', [tournament_id]);
   if (!t.rows[0]) throw new Error('Tournament not found');
   if (t.rows[0].status !== 'registration') throw new Error('Tournament is not accepting registrations');
@@ -349,16 +388,30 @@ export async function joinTournament(tournament_id, team_name, member_id) {
   if (dup.rows[0]) throw new Error('Team name already taken');
 
   const result = await pool.query(
-    'INSERT INTO tournament_teams (tournament_id, name, member_id) VALUES ($1, $2, $3) RETURNING *',
-    [tournament_id, team_name, member_id || null]
+    'INSERT INTO tournament_teams (tournament_id, name, member_id, logo_url) VALUES ($1, $2, $3, $4) RETURNING *',
+    [tournament_id, team_name, member_id || null, logo_url || '']
   );
-  return result.rows[0];
+  const team = result.rows[0];
+
+  // Insert players if provided
+  const insertedPlayers = [];
+  if (Array.isArray(players) && players.length > 0) {
+    for (const p of players) {
+      if (!p.player_name?.trim()) continue;
+      const pr = await pool.query(
+        'INSERT INTO tournament_team_players (team_id, player_name, role, is_captain) VALUES ($1, $2, $3, $4) RETURNING *',
+        [team.id, p.player_name.trim(), p.role || '', !!p.is_captain]
+      );
+      insertedPlayers.push(pr.rows[0]);
+    }
+  }
+  return { ...team, players: insertedPlayers };
 }
 
 export async function startTournament(tournament_id, userId) {
   const t = await pool.query('SELECT * FROM tournaments WHERE id = $1', [tournament_id]);
   if (!t.rows[0]) throw new Error('Tournament not found');
-  if (t.rows[0].creator_id !== userId) throw new Error('Hanya pembuat turnamen yang bisa memulai');
+  if (t.rows[0].creator_id !== Number(userId)) throw new Error('Hanya pembuat turnamen yang bisa memulai');
   if (t.rows[0].status !== 'registration') throw new Error('Tournament already started');
 
   const teamsRes = await pool.query(
@@ -389,7 +442,7 @@ export async function startTournament(tournament_id, userId) {
 export async function setMatchWinner(tournament_id, match_id, winner_id, userId, score1, score2) {
   const t = await pool.query('SELECT * FROM tournaments WHERE id = $1', [tournament_id]);
   if (!t.rows[0]) throw new Error('Tournament not found');
-  if (t.rows[0].creator_id !== userId) throw new Error('Hanya pembuat turnamen yang bisa update hasil');
+  if (t.rows[0].creator_id !== Number(userId)) throw new Error('Hanya pembuat turnamen yang bisa update hasil');
 
   const matchRes = await pool.query(
     'SELECT * FROM tournament_matches WHERE id = $1 AND tournament_id = $2',
