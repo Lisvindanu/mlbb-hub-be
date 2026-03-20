@@ -71,8 +71,8 @@ async function handler(req, res) {
 
   res.setHeader('Content-Type', 'application/json');
 
-  // Serve static images
-  if (req.url.startsWith("/images/")) {
+  // Serve static images and uploads
+  if (req.url.startsWith("/images/") || req.url.startsWith("/uploads/")) {
     const imagePath = path.join(process.cwd(), "public", decodeURIComponent(req.url));
     try {
       const stat = await fs.stat(imagePath);
@@ -230,6 +230,41 @@ async function handler(req, res) {
     } catch (error) {
       res.writeHead(500);
       res.end(JSON.stringify({ error: "Data emblem tidak tersedia" }));
+    }
+  }
+
+  // Talents API endpoint
+  else if (req.url === "/api/talents" && req.method === "GET") {
+    try {
+      const filePath = path.join(process.cwd(), "output", "mlbb-talents.json");
+      const data = await readFileCached(filePath);
+      res.writeHead(200, { 'Cache-Control': 'public, max-age=300, stale-while-revalidate=3600' });
+      res.end(data);
+    } catch (error) {
+      res.writeHead(500);
+      res.end(JSON.stringify({ error: "Data talent tidak tersedia" }));
+    }
+  }
+
+  // Hero Guides endpoint — /api/hero-guides (all) or /api/hero-guides?hero=Miya
+  else if (req.url.startsWith("/api/hero-guides") && req.method === "GET") {
+    try {
+      const filePath = path.join(process.cwd(), "output", "mlbb-hero-guides.json");
+      const raw = await readFileCached(filePath);
+      const heroName = new URL(req.url, "http://localhost").searchParams.get("hero");
+      if (heroName) {
+        const parsed = JSON.parse(raw);
+        const guide = parsed[heroName];
+        if (!guide) { res.writeHead(404); res.end(JSON.stringify({ error: 'Hero not found' })); return; }
+        res.writeHead(200, { 'Cache-Control': 'public, max-age=300, stale-while-revalidate=3600' });
+        res.end(JSON.stringify(guide));
+      } else {
+        res.writeHead(200, { 'Cache-Control': 'public, max-age=300, stale-while-revalidate=3600' });
+        res.end(raw);
+      }
+    } catch (error) {
+      res.writeHead(500);
+      res.end(JSON.stringify({ error: "Data panduan hero tidak tersedia" }));
     }
   }
 
