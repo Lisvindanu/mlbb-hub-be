@@ -19,6 +19,9 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.80.0",
+    "@google/generative-ai": "^0.24.1",
+    "@vitalets/google-translate-api": "^9.2.1",
     "bcrypt": "^6.0.0",
     "google-auth-library": "^10.6.1",
     "jsonwebtoken": "^9.0.3",

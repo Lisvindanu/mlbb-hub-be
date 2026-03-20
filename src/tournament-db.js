@@ -59,11 +59,16 @@ export async function initTournamentTables() {
     `ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS bracket_type VARCHAR(20) NOT NULL DEFAULT 'single'`,
     `ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS creator_id INTEGER`,
     `ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS bo_format VARCHAR(10) NOT NULL DEFAULT 'BO3'`,
+    `ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS end_date TIMESTAMPTZ`,
     `ALTER TABLE tournament_teams ADD COLUMN IF NOT EXISTS member_id INTEGER`,
     `ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS bracket VARCHAR(20) DEFAULT 'winners'`,
     `ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS loser_next_match_id INTEGER`,
     `ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS loser_next_match_slot INTEGER`,
     `ALTER TABLE tournament_teams ADD COLUMN IF NOT EXISTS logo_url TEXT DEFAULT ''`,
+    `ALTER TABLE tournament_team_players ADD COLUMN IF NOT EXISTS game_id VARCHAR(100) DEFAULT ''`,
+    `ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS is_paid BOOLEAN DEFAULT FALSE`,
+    `ALTER TABLE tournament_teams ADD COLUMN IF NOT EXISTS team_status VARCHAR(20) DEFAULT 'approved'`,
+    `ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS registration_fee TEXT DEFAULT ''`,
   ];
   for (const q of cols) {
     try { await pool.query(q); } catch {}
@@ -308,13 +313,13 @@ async function buildDoubleElimBracket(tournamentId, teams) {
 
 // ─── CRUD ─────────────────────────────────────────────────────────────────────
 
-export async function createTournament({ name, description, team_count, bracket_type = 'single', bo_format = 'BO3', created_by_name, creator_id, prize, rules, scheduled_at, contact }) {
+export async function createTournament({ name, description, team_count, bracket_type = 'single', bo_format = 'BO3', created_by_name, creator_id, prize, rules, scheduled_at, end_date, contact, is_paid = false, registration_fee = '' }) {
   const admin_code = generateCode();
   const validBo = ['BO1', 'BO3', 'BO5'].includes(bo_format) ? bo_format : 'BO3';
   const result = await pool.query(
-    `INSERT INTO tournaments (name, description, team_count, bracket_type, bo_format, created_by_name, creator_id, admin_code, prize, rules, scheduled_at, contact)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
-    [name, description || '', team_count, bracket_type, validBo, created_by_name || 'Anonymous', creator_id || null, admin_code, prize || '', rules || '', scheduled_at || null, contact || '']
+    `INSERT INTO tournaments (name, description, team_count, bracket_type, bo_format, created_by_name, creator_id, admin_code, prize, rules, scheduled_at, end_date, contact, is_paid, registration_fee)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *`,
+    [name, description || '', team_count, bracket_type, validBo, created_by_name || 'Anonymous', creator_id || null, admin_code, prize || '', rules || '', scheduled_at || null, end_date || null, contact || '', !!is_paid, registration_fee || '']
   );
   return result.rows[0];
 }
@@ -387,9 +392,18 @@ export async function joinTournament(tournament_id, team_name, member_id, logo_u
   );
   if (dup.rows[0]) throw new Error('Team name already taken');
 
+  if (member_id) {
+    const dupUser = await pool.query(
+      'SELECT id FROM tournament_teams WHERE tournament_id = $1 AND member_id = $2',
+      [tournament_id, member_id]
+    );
+    if (dupUser.rows[0]) throw new Error('Kamu sudah mendaftarkan tim di turnamen ini');
+  }
+
+  const teamStatus = t.rows[0].is_paid ? 'pending' : 'approved';
   const result = await pool.query(
-    'INSERT INTO tournament_teams (tournament_id, name, member_id, logo_url) VALUES ($1, $2, $3, $4) RETURNING *',
-    [tournament_id, team_name, member_id || null, logo_url || '']
+    'INSERT INTO tournament_teams (tournament_id, name, member_id, logo_url, team_status) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+    [tournament_id, team_name, member_id || null, logo_url || '', teamStatus]
   );
   const team = result.rows[0];
 
@@ -399,8 +413,8 @@ export async function joinTournament(tournament_id, team_name, member_id, logo_u
     for (const p of players) {
       if (!p.player_name?.trim()) continue;
       const pr = await pool.query(
-        'INSERT INTO tournament_team_players (team_id, player_name, role, is_captain) VALUES ($1, $2, $3, $4) RETURNING *',
-        [team.id, p.player_name.trim(), p.role || '', !!p.is_captain]
+        'INSERT INTO tournament_team_players (team_id, player_name, role, is_captain, game_id) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+        [team.id, p.player_name.trim(), p.role || '', !!p.is_captain, p.game_id || '']
       );
       insertedPlayers.push(pr.rows[0]);
     }
@@ -503,4 +517,26 @@ export async function getUserTournaments(userId) {
   `, [userId]);
 
   return { created: created.rows, joined: joined.rows };
+}
+
+export async function setTeamStatus(tournament_id, team_id, status, userId) {
+  const t = await pool.query('SELECT * FROM tournaments WHERE id = $1', [tournament_id]);
+  if (!t.rows[0]) throw new Error('Tournament not found');
+  if (t.rows[0].creator_id !== Number(userId)) throw new Error('Hanya pembuat turnamen yang bisa mengubah status tim');
+  const res = await pool.query(
+    'UPDATE tournament_teams SET team_status = $1 WHERE id = $2 AND tournament_id = $3 RETURNING *',
+    [status, team_id, tournament_id]
+  );
+  if (!res.rows[0]) throw new Error('Tim tidak ditemukan');
+  return res.rows[0];
+}
+
+export async function deleteTeam(tournament_id, team_id, userId) {
+  const t = await pool.query('SELECT * FROM tournaments WHERE id = $1', [tournament_id]);
+  if (!t.rows[0]) throw new Error('Tournament not found');
+  if (t.rows[0].creator_id !== Number(userId)) throw new Error('Hanya pembuat turnamen yang bisa menghapus tim');
+  if (t.rows[0].status !== 'registration') throw new Error('Tidak bisa hapus tim setelah turnamen dimulai');
+  const res = await pool.query('DELETE FROM tournament_teams WHERE id = $1 AND tournament_id = $2 RETURNING id', [team_id, tournament_id]);
+  if (!res.rows[0]) throw new Error('Tim tidak ditemukan');
+  return true;
 }

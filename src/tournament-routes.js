@@ -1,4 +1,7 @@
 import * as db from './tournament-db.js';
+import fs from 'fs/promises';
+import path from 'path';
+import { randomBytes } from 'crypto';
 export { initTournamentTables } from './tournament-db.js';
 
 async function parseBody(req) {
@@ -41,7 +44,7 @@ export async function handleTournamentRoutes(req, res) {
     const user = await getAuthedUser(req);
     if (!user) { json(res, 401, { error: 'Login diperlukan untuk membuat turnamen' }); return true; }
     try {
-      const { name, description, team_count, bracket_type, bo_format, prize, rules, scheduled_at, contact } = await parseBody(req);
+      const { name, description, team_count, bracket_type, bo_format, prize, rules, scheduled_at, end_date, contact, is_paid, registration_fee } = await parseBody(req);
       if (!name?.trim()) { json(res, 400, { error: 'Tournament name is required' }); return true; }
       if (![4, 8, 16, 32].includes(Number(team_count))) {
         json(res, 400, { error: 'team_count must be 4, 8, 16, or 32' }); return true;
@@ -54,7 +57,7 @@ export async function handleTournamentRoutes(req, res) {
         bo_format: bo_format || 'BO3',
         created_by_name: user.name || user.username || 'Anonymous',
         creator_id: user.userId,
-        prize, rules, scheduled_at, contact,
+        prize, rules, scheduled_at, end_date, contact, is_paid, registration_fee,
       });
       json(res, 201, tournament);
     } catch (e) {
@@ -147,6 +150,57 @@ export async function handleTournamentRoutes(req, res) {
     } catch (e) {
       json(res, 400, { error: e.message });
     }
+    return true;
+  }
+
+  // POST /api/tournaments/upload-logo — upload team logo as base64 webp
+  if (pathname === '/api/tournaments/upload-logo' && req.method === 'POST') {
+    const user = await getAuthedUser(req);
+    if (!user) { json(res, 401, { error: 'Login diperlukan' }); return true; }
+    try {
+      const { image } = await parseBody(req);
+      if (!image || !image.startsWith('data:image/')) {
+        json(res, 400, { error: 'Invalid image data' }); return true;
+      }
+      const base64 = image.replace(/^data:image\/\w+;base64,/, '');
+      const buffer = Buffer.from(base64, 'base64');
+      if (buffer.length > 2 * 1024 * 1024) {
+        json(res, 400, { error: 'Ukuran gambar maksimal 2MB' }); return true;
+      }
+      const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'teams');
+      await fs.mkdir(uploadsDir, { recursive: true });
+      const filename = `${randomBytes(12).toString('hex')}.webp`;
+      await fs.writeFile(path.join(uploadsDir, filename), buffer);
+      json(res, 200, { url: `/uploads/teams/${filename}` });
+    } catch (e) {
+      json(res, 500, { error: e.message });
+    }
+    return true;
+  }
+
+  // PATCH /api/tournaments/:id/teams/:teamId/status (approve/reject)
+  const teamStatusMatch = pathname.match(/^\/api\/tournaments\/(\d+)\/teams\/(\d+)\/status$/);
+  if (teamStatusMatch && req.method === 'PATCH') {
+    const user = await getAuthedUser(req);
+    if (!user) { json(res, 401, { error: 'Login diperlukan' }); return true; }
+    try {
+      const { status } = await parseBody(req);
+      if (!['approved', 'rejected'].includes(status)) { json(res, 400, { error: 'Status harus approved atau rejected' }); return true; }
+      const team = await db.setTeamStatus(Number(teamStatusMatch[1]), Number(teamStatusMatch[2]), status, user.userId);
+      json(res, 200, team);
+    } catch (e) { json(res, 400, { error: e.message }); }
+    return true;
+  }
+
+  // DELETE /api/tournaments/:id/teams/:teamId
+  const teamDeleteMatch = pathname.match(/^\/api\/tournaments\/(\d+)\/teams\/(\d+)$/);
+  if (teamDeleteMatch && req.method === 'DELETE') {
+    const user = await getAuthedUser(req);
+    if (!user) { json(res, 401, { error: 'Login diperlukan' }); return true; }
+    try {
+      await db.deleteTeam(Number(teamDeleteMatch[1]), Number(teamDeleteMatch[2]), user.userId);
+      json(res, 200, { ok: true });
+    } catch (e) { json(res, 400, { error: e.message }); }
     return true;
   }
 

@@ -1,8 +1,11 @@
 import { generateToken, optionalAuth } from './auth-middleware.js';
 import * as db from './community-db.js';
 import { OAuth2Client } from 'google-auth-library';
+import fs from 'fs/promises';
+import path from 'path';
+import { randomBytes } from 'crypto';
 
-const googleClient = new OAuth2Client('857151489825-5v6iesseopqcjkdeprjh6gck9ung15gs.apps.googleusercontent.com');
+const googleClient = new OAuth2Client('780591973921-q6se185m5q8tqligr6n2mvosf6aluejf.apps.googleusercontent.com');
 
 // Helper to parse request body
 async function parseBody(req) {
@@ -183,25 +186,33 @@ export async function handleCommunityRoutes(req, res) {
 
   if (pathname === '/api/auth/google' && req.method === 'POST') {
     try {
-      const { credential } = await parseBody(req);
-      if (!credential) {
+      const { credential, access_token } = await parseBody(req);
+
+      let googleId, email, name, avatar;
+
+      if (access_token) {
+        // useGoogleLogin implicit flow — fetch userinfo
+        const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${access_token}` },
+        });
+        if (!userInfoRes.ok) throw new Error('Failed to fetch Google user info');
+        const info = await userInfoRes.json();
+        googleId = info.sub; email = info.email; name = info.name; avatar = info.picture;
+      } else if (credential) {
+        // Legacy ID token flow
+        const ticket = await googleClient.verifyIdToken({
+          idToken: credential,
+          audience: '780591973921-q6se185m5q8tqligr6n2mvosf6aluejf.apps.googleusercontent.com',
+        });
+        const payload = ticket.getPayload();
+        googleId = payload.sub; email = payload.email; name = payload.name; avatar = payload.picture;
+      } else {
         res.writeHead(400);
         res.end(JSON.stringify({ error: 'Google credential is required' }));
         return true;
       }
 
-      const ticket = await googleClient.verifyIdToken({
-        idToken: credential,
-        audience: '857151489825-5v6iesseopqcjkdeprjh6gck9ung15gs.apps.googleusercontent.com',
-      });
-      const payload = ticket.getPayload();
-
-      const result = await db.findOrCreateGoogleUser({
-        googleId: payload.sub,
-        email: payload.email,
-        name: payload.name,
-        avatar: payload.picture,
-      });
+      const result = await db.findOrCreateGoogleUser({ googleId, email, name, avatar });
 
       if (result.error) {
         res.writeHead(400);
@@ -893,6 +904,51 @@ export async function handleCommunityRoutes(req, res) {
       res.end(JSON.stringify({ error: 'Failed to cast vote' }));
       return true;
     }
+  }
+
+  // POST /api/user/avatar — upload custom avatar (base64 webp)
+  if (pathname === '/api/user/avatar' && req.method === 'POST') {
+    const { verifyToken } = await import('./auth-middleware.js');
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) { res.writeHead(401); res.end(JSON.stringify({ error: 'Unauthorized' })); return true; }
+    const decoded = verifyToken(authHeader.slice(7));
+    if (!decoded) { res.writeHead(401); res.end(JSON.stringify({ error: 'Invalid token' })); return true; }
+    try {
+      const { image } = await parseBody(req);
+      if (!image?.startsWith('data:image/')) { res.writeHead(400); res.end(JSON.stringify({ error: 'Invalid image data' })); return true; }
+      const buffer = Buffer.from(image.replace(/^data:image\/\w+;base64,/, ''), 'base64');
+      if (buffer.length > 2 * 1024 * 1024) { res.writeHead(400); res.end(JSON.stringify({ error: 'Ukuran gambar maks 2MB' })); return true; }
+      const dir = path.join(process.cwd(), 'public', 'uploads', 'avatars');
+      await fs.mkdir(dir, { recursive: true });
+      const filename = `${randomBytes(12).toString('hex')}.webp`;
+      await fs.writeFile(path.join(dir, filename), buffer);
+      const avatarUrl = `/uploads/avatars/${filename}`;
+      const updated = await db.updateCustomAvatar(decoded.userId, avatarUrl);
+      res.writeHead(200);
+      res.end(JSON.stringify({ url: avatarUrl, contributor: updated }));
+    } catch (e) {
+      res.writeHead(500); res.end(JSON.stringify({ error: e.message }));
+    }
+    return true;
+  }
+
+  // POST /api/webhooks/saweria — grant donor frame on donation
+  if (pathname === '/api/webhooks/saweria' && req.method === 'POST') {
+    try {
+      const body = await parseBody(req);
+      // Saweria sends: { donatur_name, donatur_email, amount_raw, message, ... }
+      const email = body.donatur_email || body.email || '';
+      const name = body.donatur_name || body.name || '';
+      const identifier = email || name;
+      if (!identifier) { res.writeHead(400); res.end(JSON.stringify({ error: 'No donor identifier' })); return true; }
+      const updated = await db.grantDonorFrame(identifier);
+      console.log(`[Saweria] Donor frame granted to: ${identifier}`, updated ? `→ id:${updated.id} ${updated.name}` : '(not found)');
+      res.writeHead(200);
+      res.end(JSON.stringify({ success: true, matched: !!updated, user: updated?.name || null }));
+    } catch (e) {
+      res.writeHead(500); res.end(JSON.stringify({ error: e.message }));
+    }
+    return true;
   }
 
   // Route not handled

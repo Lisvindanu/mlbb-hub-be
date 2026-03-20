@@ -139,20 +139,36 @@ export async function updateTierList(id, updates, requesterId) {
 }
 
 // ============ CONTRIBUTORS (PostgreSQL) ============
+
+// Migrate: add custom_avatar and has_donor_frame columns
+async function migrateContributorColumns() {
+  try {
+    await pool.query(`ALTER TABLE contributors ADD COLUMN IF NOT EXISTS custom_avatar TEXT`);
+    await pool.query(`ALTER TABLE contributors ADD COLUMN IF NOT EXISTS has_donor_frame BOOLEAN DEFAULT FALSE`);
+  } catch (e) { console.error('Migrate contributors columns:', e.message); }
+}
+migrateContributorColumns();
+
+function mapContributor(row) {
+  return {
+    id: row.id.toString(),
+    name: row.name,
+    email: row.email,
+    avatar: row.custom_avatar || row.avatar || null,
+    hasDonorFrame: row.has_donor_frame || false,
+    totalContributions: row.total_contributions,
+    totalTierLists: row.total_tier_lists,
+    totalVotes: row.total_votes,
+    createdAt: row.created_at,
+  };
+}
+
 export async function getAllContributors() {
   try {
     const result = await pool.query(
-      'SELECT id, name, email, total_contributions, total_tier_lists, total_votes, created_at FROM contributors ORDER BY (total_contributions * 5 + total_tier_lists * 10 + total_votes) DESC'
+      'SELECT id, name, email, avatar, custom_avatar, has_donor_frame, total_contributions, total_tier_lists, total_votes, created_at FROM contributors ORDER BY (total_contributions * 5 + total_tier_lists * 10 + total_votes) DESC'
     );
-    return result.rows.map(row => ({
-      id: row.id.toString(),
-      name: row.name,
-      email: row.email,
-      totalContributions: row.total_contributions,
-      totalTierLists: row.total_tier_lists,
-      totalVotes: row.total_votes,
-      createdAt: row.created_at,
-    }));
+    return result.rows.map(mapContributor);
   } catch (error) {
     console.error('Failed to get contributors:', error);
     return [];
@@ -162,26 +178,32 @@ export async function getAllContributors() {
 export async function getContributorById(id) {
   try {
     const result = await pool.query(
-      'SELECT id, name, email, total_contributions, total_tier_lists, total_votes, created_at FROM contributors WHERE id = $1',
+      'SELECT id, name, email, avatar, custom_avatar, has_donor_frame, total_contributions, total_tier_lists, total_votes, created_at FROM contributors WHERE id = $1',
       [parseInt(id)]
     );
-
     if (result.rows.length === 0) return null;
-
-    const row = result.rows[0];
-    return {
-      id: row.id.toString(),
-      name: row.name,
-      email: row.email,
-      totalContributions: row.total_contributions,
-      totalTierLists: row.total_tier_lists,
-      totalVotes: row.total_votes,
-      createdAt: row.created_at,
-    };
+    return mapContributor(result.rows[0]);
   } catch (error) {
     console.error('Failed to get contributor by id:', error);
     return null;
   }
+}
+
+export async function updateCustomAvatar(id, avatarUrl) {
+  const result = await pool.query(
+    'UPDATE contributors SET custom_avatar = $1 WHERE id = $2 RETURNING *',
+    [avatarUrl, parseInt(id)]
+  );
+  return result.rows[0] ? mapContributor(result.rows[0]) : null;
+}
+
+export async function grantDonorFrame(emailOrName) {
+  // Try match by email first, then by name
+  let result = await pool.query('UPDATE contributors SET has_donor_frame = TRUE WHERE LOWER(email) = LOWER($1) RETURNING id, name', [emailOrName]);
+  if (result.rows.length === 0) {
+    result = await pool.query('UPDATE contributors SET has_donor_frame = TRUE WHERE LOWER(name) = LOWER($1) RETURNING id, name', [emailOrName]);
+  }
+  return result.rows[0] || null;
 }
 
 export async function getContributorByEmail(email) {
